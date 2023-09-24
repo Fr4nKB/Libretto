@@ -6,8 +6,8 @@ import loadGrades as lg
 grades = []
 TOTCFU = 120
 index = 0
-commands = ["Libretto", "Aggiungi un voto", "Rimuovi un voto", "Stampa media"]
-phrase = ["La media ponderata è ", "Media con solo 18 d'ora in poi: ", "Media con solo 30 d'ora in poi: "]
+phrase = ["La media ponderata è ", "Media con solo 18 d'ora in poi: ", "Media con solo 30 d'ora in poi: "]    
+fields = ['CORSO', 'VOTO', 'CFU', 'DATA']
 
 try:
     configJSON = open("./docs/config.json", "r")
@@ -122,8 +122,6 @@ def remove_grade(subject):
     file.close()
 
     print_grades()
-    
-fields = ['CORSO', 'VOTO', 'CFU']
 
 def fetch(type, entries):
 
@@ -174,7 +172,7 @@ if __name__ == "__main__":
     load_grades()
     window = tk.Tk()
     window.minsize(600, 450)
-    window.maxsize(1200, 800)
+    window.maxsize(1200, 900)
     window.resizable(False, False)
     window.title('Libretto')
     window.configure(bg=config["panelBGcolor"])
@@ -196,13 +194,14 @@ if __name__ == "__main__":
     panel = tk.Frame(master=window, borderwidth=1, bg=config["panelBGcolor"], highlightthickness=0)
     panel.pack(fill=tk.X, pady=25)
 
-    ents = makeform(panel, fields)
-    btnPanel = tk.Frame(master=panel, borderwidth=1, bg=config["panelBGcolor"], highlightthickness=0)
-    btnPanel.pack(side=tk.TOP)
-    addBtn = tk.Button(btnPanel, bg=config["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: print(fetch("A", e))))
-    addBtn.pack(side=tk.LEFT, padx=5, pady=5)
-    rmvBtn = tk.Button(btnPanel, bg=config["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: print(fetch("R", e))))
-    rmvBtn.pack(side=tk.RIGHT, padx=5, pady=5)
+    if(len(config['grades']) > 0):
+        ents = makeform(panel, fields)
+        btnPanel = tk.Frame(master=panel, borderwidth=1, bg=config["panelBGcolor"], highlightthickness=0)
+        btnPanel.pack(side=tk.TOP)
+        addBtn = tk.Button(btnPanel, bg=config["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: add_grade(fetch("A", e))))
+        addBtn.pack(side=tk.LEFT, padx=5, pady=5)
+        rmvBtn = tk.Button(btnPanel, bg=config["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: remove_grade(fetch("R", e))))
+        rmvBtn.pack(side=tk.RIGHT, padx=5, pady=5)
 
     #display window
     window.mainloop()
