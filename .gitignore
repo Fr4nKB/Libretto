@@ -1,3 +1,4 @@
 docs/*.txt
 docs/userdata.json
 src/__pycache__
+*.png

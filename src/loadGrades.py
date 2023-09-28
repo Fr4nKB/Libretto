@@ -34,6 +34,12 @@ payload2 = {
     '_eventId_proceed': ''
 }
 
+def saveCookies():
+    return
+
+def loadCookies():
+    return
+
 def loadGrades():
     global grades
 
@@ -92,12 +98,12 @@ def loadGrades():
             else:
                 elem += tmp2[2] + ", "
 
-            elem += tmp2[1] + ", "
+            elem += tmp2[1] + ","
 
             if(len(tmp) > 1):   #date
                 elem += tmp[1]
             else:
-                elem += "NaN"
+                elem += " NaN"
             
             elem += '\n'
 

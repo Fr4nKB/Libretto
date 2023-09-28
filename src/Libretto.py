@@ -1,13 +1,19 @@
 import sys
 import json
+import time
 import tkinter as tk
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import datetime
 import loadGrades as lg
 
 grades = []
+toGraph = []
 TOTCFU = 120
 index = 0
 phrase = ["La media ponderata è ", "Media con solo 18 d'ora in poi: ", "Media con solo 30 d'ora in poi: "]    
 fields = ['CORSO', 'VOTO', 'CFU', 'DATA']
+plt.style.use('dark_background')
 
 try:
     configJSON = open("./docs/config.json", "r")
@@ -166,42 +172,88 @@ def makeform(root, fields):
         entries.append((field, ent))
     return entries
 
-if __name__ == "__main__":
+def convertToObject():
+    global grades
+    global toGraph
 
-    #load grades and setup a window
-    load_grades()
-    window = tk.Tk()
-    window.minsize(600, 450)
-    window.maxsize(1200, 900)
-    window.resizable(False, False)
-    window.title('Libretto')
-    window.configure(bg=config["panelBGcolor"])
+    objects = []
+    toGraph = [[], [], []]
 
-    #setup console
-    console = tk.PanedWindow(orient='vertical')
-    vertScrollbar = tk.Scrollbar(console, orient='vertical')
-    vertScrollbar.pack(side = tk.RIGHT, fill = tk.Y)
+    for elem in grades:
+        contents = elem.split(', ')
+        date = contents[3][:len(contents[3])-1]
+        timestruct = time.strptime(date, "%d/%m/%Y")
 
-    textConsole = tk.Text(window, height = 9, wrap = tk.NONE,
-                        yscrollcommand = vertScrollbar.set, bg=config["consoleBGcolor"],
-                        fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
-    vertScrollbar.config(command=textConsole.yview)
-    textConsoleSummary = tk.Text(window, height = 3, wrap = tk.NONE, bg=config["textBGcolor"],
-                        fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0, pady=25)
-    print_grades()
+        objects.append((int(time.mktime(timestruct)), date, int(contents[1]), int(contents[2])))
 
-    #setup control panel
-    panel = tk.Frame(master=window, borderwidth=1, bg=config["panelBGcolor"], highlightthickness=0)
-    panel.pack(fill=tk.X, pady=25)
+    objects.sort(key=lambda x: x[0], reverse=False)
 
-    if(len(config['grades']) > 0):
-        ents = makeform(panel, fields)
-        btnPanel = tk.Frame(master=panel, borderwidth=1, bg=config["panelBGcolor"], highlightthickness=0)
-        btnPanel.pack(side=tk.TOP)
-        addBtn = tk.Button(btnPanel, bg=config["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: add_grade(fetch("A", e))))
-        addBtn.pack(side=tk.LEFT, padx=5, pady=5)
-        rmvBtn = tk.Button(btnPanel, bg=config["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: remove_grade(fetch("R", e))))
-        rmvBtn.pack(side=tk.RIGHT, padx=5, pady=5)
+    cfuSUM = 0
+    avg = 0
+    secs = objects[0][0]
+    for elem in objects:
+        cfuSUM += elem[3]
 
-    #display window
-    window.mainloop()
+        if(elem[2] == 33):
+            tmp = 30
+        else:
+            tmp = elem[2]
+            
+        avg += tmp*elem[3]
+
+        toGraph[0].append(datetime.datetime.strptime(elem[1],'%d/%m/%Y').date())
+        toGraph[1].append(round(avg/cfuSUM, 2))
+        toGraph[2].append(cfuSUM)
+
+def plot_stats(name, nameX, nameY, x, y):
+
+    plt.xlabel(nameX)
+    plt.ylabel(nameY)
+    plt.xticks(x)
+
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%Y'))
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=50))
+    plt.plot(x, y, marker='o')
+    plt.gcf().autofmt_xdate()
+
+    plt.savefig(name+".png", dpi = 300)
+    plt.clf()
+    return
+
+#load grades and setup a window
+load_grades()
+window = tk.Tk()
+window.minsize(600, 450)
+window.maxsize(1200, 900)
+window.resizable(False, False)
+window.title('Libretto')
+window.configure(bg=config["panelBGcolor"])
+
+#setup console
+console = tk.PanedWindow(orient='vertical')
+vertScrollbar = tk.Scrollbar(console, orient='vertical')
+vertScrollbar.pack(side = tk.RIGHT, fill = tk.Y)
+
+textConsole = tk.Text(window, height = 9, wrap = tk.NONE,
+                    yscrollcommand = vertScrollbar.set, bg=config["consoleBGcolor"],
+                    fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
+vertScrollbar.config(command=textConsole.yview)
+textConsoleSummary = tk.Text(window, height = 3, wrap = tk.NONE, bg=config["textBGcolor"],
+                    fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0, pady=25)
+print_grades()
+
+#setup control panel
+panel = tk.Frame(master=window, borderwidth=1, bg=config["panelBGcolor"], highlightthickness=0)
+panel.pack(fill=tk.X, pady=25)
+
+if(len(config['grades']) > 0):
+    ents = makeform(panel, fields)
+    btnPanel = tk.Frame(master=panel, borderwidth=1, bg=config["panelBGcolor"], highlightthickness=0)
+    btnPanel.pack(side=tk.TOP)
+    addBtn = tk.Button(btnPanel, bg=config["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: add_grade(fetch("A", e))))
+    addBtn.pack(side=tk.LEFT, padx=5, pady=5)
+    rmvBtn = tk.Button(btnPanel, bg=config["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: remove_grade(fetch("R", e))))
+    rmvBtn.pack(side=tk.RIGHT, padx=5, pady=5)
+
+#display window
+window.mainloop()
