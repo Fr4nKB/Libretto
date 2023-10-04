@@ -1,9 +1,5 @@
 import sys
 import time
-
-#modules to realiza graphs
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import datetime
 
 #modules for HTTP requests
@@ -16,7 +12,6 @@ from selenium.webdriver.common.by import By
 import jsonLoader as jl
 import constants as const
 
-plt.style.use('dark_background')
 grades = [] #all the grades will be loaded here
 jl.loadJSON("userdata")
 payload2 = {
@@ -168,9 +163,8 @@ def remove_grade(subject):
         file.write(elem)
     file.close()
    
-def convertToObject():
+def gradesToStats():
     global grades
-    global toGraph
 
     objects = []
     toGraph = [[], [], []]
@@ -200,17 +194,4 @@ def convertToObject():
         toGraph[1].append(round(avg/cfuSUM, 2))
         toGraph[2].append(cfuSUM)
 
-def plot_stats(name, nameX, nameY, x, y):
-
-    plt.xlabel(nameX)
-    plt.ylabel(nameY)
-    plt.xticks(x)
-
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%Y'))
-    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=50))
-    plt.plot(x, y, marker='o')
-    plt.gcf().autofmt_xdate()
-
-    plt.savefig(name+".png", dpi = 300)
-    plt.clf()
-    return
+    return toGraph
