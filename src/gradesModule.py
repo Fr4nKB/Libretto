@@ -68,27 +68,27 @@ def loadGrades():
             browser.get(const.urls[2])
             print("DONE")
 
-            time.sleep(1)   #wait for the page to fully load
+            time.sleep(2)   #wait for the page to fully load
             rawData = ((browser.find_element(By.ID, 'tableLibretto')).find_element(By.CLASS_NAME, 'table-1-body')).text.split('\n')
-            
+
             index = 0
             while(index < len(rawData)):
                 
                 tmp = rawData[index+1].split('-')
-                tmp2 = tmp[0].split(' ')
+                tmp2 = (tmp[0].split(' '))[1:]
 
-                if(len(tmp2) <= 2): #no grade, skip
+                if(len(tmp2) <= 2): #no grade yet, skip
                     index += 2
                     continue
 
                 elem = rawData[index] + ", "
 
-                if(tmp2[2] == "30L"):   #grade
+                if(tmp2[len(tmp2)-2] == "30L"):   #grade
                         elem += "33, "
                 else:
-                    elem += tmp2[2] + ", "
+                    elem += tmp2[len(tmp2)-2] + ", "
 
-                elem += tmp2[1] + ","
+                elem += tmp2[0] + ","
 
                 if(len(tmp) > 1):   #date
                     elem += tmp[1]

@@ -53,7 +53,8 @@ def plot_stats(graph, name, x, y, ylim, dpi):
     subplot.set_title(name)
     fig.gca().set_ylim(ylim)
     fig.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%y'))
-    fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
+    if(len(x) > 1):
+        fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
     fig.autofmt_xdate(rotation=30, ha="center")
     
     canvas = FigureCanvasTkAgg(fig, master = graph)
@@ -159,13 +160,13 @@ graph2 = tk.Frame(master=container3, borderwidth=0, bg=jl.jsonFile["consoleBGcol
 graph2.pack(side=tk.RIGHT)
 
 #load graphs
-window.update_idletasks()
+window.update()
 arr = gm.gradesToStats()
 plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], int(textConsole.winfo_width()*4/(6*3.9)))
 plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], int(textConsole.winfo_width()*4/(6*3.9)))
 
 #adjust gui to fit window size
-window.update_idletasks()
+window.update()
 padding = int((container1.winfo_height() - (textConsole.winfo_height()+textConsoleSummary.winfo_height()))/4)
 textConsole.configure(pady=padding)
 textConsoleSummary.configure(pady=padding)
