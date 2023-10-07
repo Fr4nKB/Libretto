@@ -12,8 +12,13 @@ import gradesModule as gm
 import jsonLoader as jl
 import constants as const
 
-plt.style.use('dark_background')
 jl.loadJSON("config")
+plt.rcParams.update({"figure.facecolor" : jl.jsonFile["consoleBGcolor"],
+                    "axes.facecolor" : jl.jsonFile["textBGcolor"],
+                    "xtick.color" : "white",
+                    "ytick.color" : "white",
+                    "text.color" : "white",
+                    "axes.edgecolor": "gray"})
 
 def print_grades(grades, textConsole, textConsoleSummary):
 
@@ -40,18 +45,18 @@ def print_grades(grades, textConsole, textConsoleSummary):
     textConsoleSummary.pack(side=tk.TOP, fill=tk.X)
     textConsoleSummary.config(state=tk.DISABLED)   #make console read only
 
-def plot_stats(name, x, y, ylim):
+def plot_stats(graph, name, x, y, ylim, dpi):
 
-    fig = Figure(figsize=(6, 3), dpi = 200)
+    fig = Figure(figsize=(3.9, 3), dpi = dpi)
     subplot = fig.add_subplot(111)
-    subplot.plot(x, y, marker='o')
+    subplot.plot(x, y, marker='o', color=jl.jsonFile["graphLine"])
     subplot.set_title(name)
     fig.gca().set_ylim(ylim)
     fig.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%y'))
     fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
-    fig.autofmt_xdate()
+    fig.autofmt_xdate(rotation=30, ha="center")
     
-    canvas = FigureCanvasTkAgg(fig, master = graph1)
+    canvas = FigureCanvasTkAgg(fig, master = graph)
     canvas.draw()
     canvas.get_tk_widget().pack()
     
@@ -92,18 +97,15 @@ def _makeform(root, fields):
     entries = []
     for field in fields:
         row = tk.Frame(root)
-        ent = tk.Entry(row, bg="#313131", highlightthickness=0, relief=tk.FLAT, fg="#9D9D9D")
+        ent = tk.Entry(row, bg=jl.jsonFile["formInput"], highlightthickness=0, relief=tk.FLAT, fg=jl.jsonFile["formText"])
         ent.insert(0, field)
         
-        row.pack(padx=5, pady=10)
+        row.pack(padx=15, pady=15)
         ent.pack(side=tk.LEFT)
         entries.append((field, ent))
     return entries
 
-
 window = tk.Tk()
-window.minsize(1500, 1000)
-window.maxsize(2000, 1500)
 window.resizable(False, False)
 window.title('Libretto')
 window.configure(bg=jl.jsonFile["consoleBGcolor"])
@@ -111,44 +113,62 @@ window.configure(bg=jl.jsonFile["consoleBGcolor"])
 gm.loadGrades()
 
 #containers to handle disposition of frames
-container1 = tk.Frame(master=window, borderwidth=1, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
-container1.pack(side=tk.TOP)
-container2 = tk.Frame(master=container1, borderwidth=1, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
+    #container for textconsole and first graph
+container1 = tk.Frame(master=window, borderwidth=0, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
+container1.pack(side=tk.TOP, pady=(0,0))
+    #container for textconsole
+container2 = tk.Frame(master=container1, borderwidth=0, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
 container2.pack(side=tk.LEFT)
+    #container for panel and second graph
+container3 = tk.Frame(master=window, borderwidth=0, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
+container3.pack(side=tk.BOTTOM, fill=tk.X)
 
 #setup console
 console = tk.PanedWindow(orient='vertical', master=container2)
 vertScrollbar = tk.Scrollbar(console, orient='vertical')
 vertScrollbar.pack(side = tk.RIGHT, fill = tk.Y)
 
-textConsole = tk.Text(container2, height = 12, wrap = tk.NONE,
+textConsole = tk.Text(container2, height = 12, width = 75, wrap = tk.NONE,
                     yscrollcommand = vertScrollbar.set, bg=jl.jsonFile["consoleBGcolor"],
                     fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
 vertScrollbar.config(command=textConsole.yview)
-textConsoleSummary = tk.Text(container2, height = 3, wrap = tk.NONE, bg=jl.jsonFile["textBGcolor"],
-                    fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0, pady=25)
+textConsoleSummary = tk.Text(container2, height = 3, width = 75, wrap = tk.NONE, bg=jl.jsonFile["textBGcolor"],
+                    fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
 
 print_grades(gm.grades, textConsole, textConsoleSummary)
 
-graph1 = tk.Frame(master=container1, borderwidth=1, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0, width=1)
+graph1 = tk.Frame(master=container1, borderwidth=0, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
 graph1.pack(side=tk.RIGHT)
 
 #setup control panel
-panel = tk.Frame(master=window, borderwidth=1, bg=jl.jsonFile["panelBGcolor"], highlightthickness=0)
-panel.pack(fill=tk.X, pady=25, side=tk.BOTTOM)
+panelContainer = tk.Frame(master=container3, borderwidth=0, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
+panelContainer.pack(expand=True, side=tk.LEFT)
+panel = tk.Frame(master=panelContainer, borderwidth=0, bg=jl.jsonFile["panelBGcolor"], highlightthickness=0)
+panel.pack(pady=25)
 
 if(len(jl.jsonFile['grades']) > 0):
     ents = _makeform(panel, const.fields)
-    btnPanel = tk.Frame(master=panel, borderwidth=1, bg=jl.jsonFile["panelBGcolor"], highlightthickness=0)
-    btnPanel.pack(side=tk.TOP)
+    btnPanel = tk.Frame(master=panel, borderwidth=0, bg=jl.jsonFile["panelBGcolor"], highlightthickness=0)
+    btnPanel.pack(anchor=tk.CENTER)
     addBtn = tk.Button(btnPanel, bg=jl.jsonFile["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(_fetch("A", e)), print_grades(gm.grades)]))
-    addBtn.pack(side=tk.LEFT, padx=5, pady=5)
+    addBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
     rmvBtn = tk.Button(btnPanel, bg=jl.jsonFile["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(_fetch("R", e)), print_grades(gm.grades)]))
-    rmvBtn.pack(side=tk.RIGHT, padx=5, pady=5)
+    rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
 
+graph2 = tk.Frame(master=container3, borderwidth=0, bg=jl.jsonFile["consoleBGcolor"], highlightthickness=0)
+graph2.pack(side=tk.RIGHT)
+
+#load graphs
+window.update_idletasks()
 arr = gm.gradesToStats()
-plot_stats("Andamento media", arr[0], arr[1], [18,30])
-#plot_stats("Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU])
+plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], int(textConsole.winfo_width()*4/(6*3.9)))
+plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], int(textConsole.winfo_width()*4/(6*3.9)))
+
+#adjust gui to fit window size
+window.update_idletasks()
+padding = int((container1.winfo_height() - (textConsole.winfo_height()+textConsoleSummary.winfo_height()))/4)
+textConsole.configure(pady=padding)
+textConsoleSummary.configure(pady=padding)
 
 #display window
 window.mainloop()
