@@ -1,4 +1,6 @@
+import sys
 import tkinter as tk
+import multiprocessing as mp
 
 #modules to realiza graphs
 import matplotlib.pyplot as plt
@@ -7,12 +9,15 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 
-#custom models
+#custom modules
 import gradesModule as gm
 import jsonHandler as jl
 import constants as const
 
-configJSON = jl.loadJSON("config")
+configJSON,res = jl.loadJSON("config")
+if(res == False):
+    sys.exit(1)
+
 plt.rcParams.update({"figure.facecolor" : configJSON["consoleBGcolor"],
                     "axes.facecolor" : configJSON["textBGcolor"],
                     "xtick.color" : "white",
@@ -20,7 +25,7 @@ plt.rcParams.update({"figure.facecolor" : configJSON["consoleBGcolor"],
                     "text.color" : "white",
                     "axes.edgecolor": "gray"})
 
-def print_grades(grades, textConsole, textConsoleSummary):
+def print_grades(grades):
 
     #output grades
     textConsole.config(state=tk.NORMAL)     #make console writable
@@ -80,7 +85,7 @@ def _fetch(type, entries):
             return []
         if(type == "R"):
             return tmp
-        elif(index > 0):
+        elif(index in [1,2]):
             if(str.isnumeric(tmp) == False):
                 return []
             tmp_int = int(tmp)
@@ -106,12 +111,15 @@ def _makeform(root, fields):
         entries.append((field, ent))
     return entries
 
+child = mp.Process(target=gm.loadUNIPIGrades())
+child.start()
+
 window = tk.Tk()
 window.resizable(False, False)
 window.title('Libretto')
 window.configure(bg=configJSON["consoleBGcolor"])
 
-gm.loadGrades()
+gm.loadLocalGrades()
 
 #containers to handle disposition of frames
     #container for textconsole and first graph
@@ -136,7 +144,7 @@ vertScrollbar.config(command=textConsole.yview)
 textConsoleSummary = tk.Text(container2, height = 3, width = 75, wrap = tk.NONE, bg=configJSON["textBGcolor"],
                     fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
 
-print_grades(gm.grades, textConsole, textConsoleSummary)
+print_grades(gm.grades)
 
 graph1 = tk.Frame(master=container1, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
 graph1.pack(side=tk.RIGHT)
@@ -147,14 +155,13 @@ panelContainer.pack(expand=True, side=tk.LEFT)
 panel = tk.Frame(master=panelContainer, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
 panel.pack(pady=25)
 
-if(len(configJSON['grades']) > 0):
-    ents = _makeform(panel, const.fields)
-    btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
-    btnPanel.pack(anchor=tk.CENTER)
-    addBtn = tk.Button(btnPanel, bg=configJSON["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(_fetch("A", e)), print_grades(gm.grades)]))
-    addBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
-    rmvBtn = tk.Button(btnPanel, bg=configJSON["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(_fetch("R", e)), print_grades(gm.grades)]))
-    rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
+ents = _makeform(panel, const.fields)
+btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
+btnPanel.pack(anchor=tk.CENTER)
+addBtn = tk.Button(btnPanel, bg=configJSON["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(_fetch("A", e)), print_grades(gm.grades)]))
+addBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
+rmvBtn = tk.Button(btnPanel, bg=configJSON["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(_fetch("R", e)), print_grades(gm.grades)]))
+rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
 
 graph2 = tk.Frame(master=container3, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
 graph2.pack(side=tk.RIGHT)
