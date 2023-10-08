@@ -111,15 +111,31 @@ def _makeform(root, fields):
         entries.append((field, ent))
     return entries
 
-child = mp.Process(target=gm.loadUNIPIGrades())
+def updateGUI():
+    global graph1, graph2
+
+    gm.loadLocalGrades()
+    print_grades(gm.grades)
+
+    #remove graphs to replace them
+    if(len(graph1.winfo_children()) != 0):
+        graph1.winfo_children()[0].destroy()
+    if(len(graph2.winfo_children()) != 0):
+        graph2.winfo_children()[0].destroy()
+
+    window.update()
+    dim = int(textConsole.winfo_width()*4/(6*3.9))
+    arr = gm.gradesToStats()
+    plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], dim)
+    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], dim)
+
+child = mp.Process(target=gm.loadUNIPIgrades)
 child.start()
 
 window = tk.Tk()
 window.resizable(False, False)
 window.title('Libretto')
 window.configure(bg=configJSON["consoleBGcolor"])
-
-gm.loadLocalGrades()
 
 #containers to handle disposition of frames
     #container for textconsole and first graph
@@ -144,8 +160,6 @@ vertScrollbar.config(command=textConsole.yview)
 textConsoleSummary = tk.Text(container2, height = 3, width = 75, wrap = tk.NONE, bg=configJSON["textBGcolor"],
                     fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
 
-print_grades(gm.grades)
-
 graph1 = tk.Frame(master=container1, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
 graph1.pack(side=tk.RIGHT)
 
@@ -166,17 +180,16 @@ rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
 graph2 = tk.Frame(master=container3, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
 graph2.pack(side=tk.RIGHT)
 
-#load graphs
-window.update()
-arr = gm.gradesToStats()
-plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], int(textConsole.winfo_width()*4/(6*3.9)))
-plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], int(textConsole.winfo_width()*4/(6*3.9)))
+#display data
+updateGUI()
 
 #adjust gui to fit window size
 window.update()
 padding = int((container1.winfo_height() - (textConsole.winfo_height()+textConsoleSummary.winfo_height()))/4)
 textConsole.configure(pady=padding)
 textConsoleSummary.configure(pady=padding)
+
+window.after(10000, updateGUI)
 
 #display window
 window.mainloop()

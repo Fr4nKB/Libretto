@@ -1,4 +1,4 @@
-import json
+import json,time
 
 jsonFile = {}
 
@@ -12,7 +12,7 @@ def loadJSON(name):
         file.close()
         return jsonFile, True
     except:
-        print("Missing"+name+".json")
+        print("Missing "+name+".json")
         return {}, False
 
 def saveJSON(name, contents):

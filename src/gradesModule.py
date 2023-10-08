@@ -46,7 +46,7 @@ def loadCookies(browser):
     else:
         return False
 
-def loadUNIPIGrades():
+def loadUNIPIgrades():
     global grades
 
     opt = Options()
@@ -78,7 +78,7 @@ def loadUNIPIGrades():
             saveCookies(req_cookies)
             browser.get(const.urls[0])
 
-    #navigate to 'Libretto' page
+    #select latest career
     if(browser.current_url == const.urls[0]):
         time.sleep(1)   #wait for the page to fully load
         url = browser.find_elements(By.ID, 'gu_toolbar_sceltacarriera')[0].find_element(By.CLASS_NAME, 'toolbar-button-blu').get_attribute('href')
@@ -87,6 +87,7 @@ def loadUNIPIGrades():
         print("Error connecting to UNIPI servers")
         sys.exit(1)
 
+    #navigate to 'Libretto' page
     browser.get(const.urls[2])
     print("DONE")
 
@@ -139,8 +140,7 @@ def loadLocalGrades():
             grades = file.readlines()
             file.close()
     except:
-        print("Some error occured while reading esami.txt")
-        sys.exit(1)
+        grades = []
 
 def avg():
     global grades
