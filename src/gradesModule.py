@@ -51,32 +51,48 @@ def loadUNIPIgrades():
 
     opt = Options()
     opt.add_argument("--headless=new")
+    opt.add_argument('--log-level=3')
     browser = webdriver.Chrome(options = opt)
 
     print("Trying to connect using previous session: ", end = '', flush = True)
     if(loadCookies(browser) == False):
-        print("FAILED")
-        with requests.Session() as s:
-            print("Connection to unipi servers: ", end = '', flush = True)
-            p1 = s.get(const.urls[0])
-            p2 = s.get(p1.url)
-            p3 = s.post(p2.url, data = const.payload1)
-            p4 = s.get(p3.url)
-            print("DONE")
+        print("Trying to establish a new session: ")
 
-            print("Logging in: ", end = '', flush = True)
-            s.post(p4.url, data = payload2)
-            print("DONE")
+        count = 0
+        req_cookies = {}
+        while True:
 
-            print("Loading 'Alice' portal: ", end = '', flush = True)
-            req_cookies = s.cookies.get_dict()
-            browser.get(const.urls[0])
+            count += 1
+            try:
+                with requests.Session() as s:
+                    print("Connection to unipi servers: ", end = '', flush = True)
+                    p1 = s.get(const.urls[0])
+                    p2 = s.get(p1.url)
+                    p3 = s.post(p2.url, data = const.payload1)
+                    p4 = s.get(p3.url)
+                    print("DONE")
 
-            #adding cookies to enter 'Libretto'
-            browser.add_cookie({"name": 'shib_idp_session', "value": req_cookies['shib_idp_session']})
-            browser.add_cookie({"name": 'JSESSIONID', "value": req_cookies['JSESSIONID']})
-            saveCookies(req_cookies)
-            browser.get(const.urls[0])
+                    print("Logging in: ", end = '', flush = True)
+                    s.post(p4.url, data = payload2)
+                    print("DONE")
+
+                    print("Loading 'Alice' portal: ", end = '', flush = True)
+                    req_cookies = s.cookies.get_dict()
+                    saveCookies(req_cookies)
+                    break
+
+            except:
+                if(count == 10):
+                    print("Final attempt n."+str(count)+" failed, quitting...")
+                    sys.exit(1)
+                print("Attempt n."+str(count)+" failed, trying again...")
+
+        browser.get(const.urls[0])
+
+        #adding cookies to enter 'Libretto'
+        browser.add_cookie({"name": 'shib_idp_session', "value": req_cookies['shib_idp_session']})
+        browser.add_cookie({"name": 'JSESSIONID', "value": req_cookies['JSESSIONID']})
+        browser.get(const.urls[0])
 
     #select latest career
     if(browser.current_url == const.urls[0]):
@@ -109,8 +125,11 @@ def loadUNIPIgrades():
 
         if(tmp2[len(tmp2)-2] == "30L"):   #grade
                 elem += "33, "
-        else:
+        elif(tmp2[len(tmp2)-2].isnumeric() == True):
             elem += tmp2[len(tmp2)-2] + ", "
+        else:
+            index += 2
+            continue
 
         elem += tmp2[0] + ","
 
