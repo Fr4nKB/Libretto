@@ -1,6 +1,4 @@
-import sys
-import time
-import datetime
+import sys, time, datetime, re
 
 #modules for HTTP requests
 import requests
@@ -10,6 +8,7 @@ from selenium.webdriver.common.by import By
 
 #custom modules
 import jsonHandler as jl
+import utils
 import constants as const
 
 grades = [] #all the grades will be loaded here
@@ -17,13 +16,12 @@ configJSON, res = jl.loadJSON("config")
 if(res == False):
     sys.exit(1)
 udataJSON, res = jl.loadJSON("userdata")
-if(res == False):
-    sys.exit(1)
-payload2 = {
-    'j_username': udataJSON['uname'],
-    'j_password': udataJSON['pwd'],
-    '_eventId_proceed': ''
-}
+if(res == True):
+    payload2 = {
+        'j_username': udataJSON['uname'],
+        'j_password': udataJSON['pwd'],
+        '_eventId_proceed': ''
+    }
 
 #contents must be dict
 def saveCookies(contents):
@@ -107,7 +105,7 @@ def loadUNIPIgrades():
     browser.get(const.urls[2])
     print("DONE")
 
-    time.sleep(2)   #wait for the page to fully load
+    time.sleep(1)   #wait for the page to fully load
     rawData = ((browser.find_element(By.ID, 'tableLibretto')).find_element(By.CLASS_NAME, 'table-1-body')).text.split('\n')
 
     index = 0
@@ -191,36 +189,41 @@ def add_grade(elem):
     global grades
 
     if(elem == []):
-        return
+        return False
     
     toAdd = elem[0]+", "+elem[1]+", "+elem[2]+", "+elem[3]+"\n"
 
+    #no repeating courses
     if(any(elem[0] in s for s in grades)):
-        return
-    
+        return False
+
     grades.append(toAdd)
 
-    file = open(configJSON["grades"], "w")
+    file = open("./docs/esami.txt", "w")
     for elem in grades:
         file.write(elem)
     file.close()
+
+    return True
 
 def remove_grade(subject):
     global grades
 
     if(len(subject) <= 0):
-        return
+        return False
 
     toRemove = [x for x in grades if subject in x]
     if(len(toRemove) == 0):
-        return
+        return False
     
     grades.remove(toRemove[0])
 
-    file = open(configJSON["grades"], "w")
+    file = open("./docs/esami.txt", "w")
     for elem in grades:
         file.write(elem)
     file.close()
+
+    return True
    
 def gradesToStats():
     global grades

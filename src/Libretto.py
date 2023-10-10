@@ -1,4 +1,4 @@
-import sys
+import sys, signal
 import tkinter as tk
 import multiprocessing as mp
 
@@ -12,6 +12,7 @@ from matplotlib.backends.backend_tkagg import (
 #custom modules
 import gradesModule as gm
 import jsonHandler as jl
+import utils
 import constants as const
 
 configJSON,res = jl.loadJSON("config")
@@ -68,7 +69,8 @@ def plot_stats(graph, name, x, y, ylim, dpi):
     
     return
 
-def _fetch(type, entries):
+#converts input from form to array form
+def fetch(type, entries):
 
     if(type not in ["A", "R"]):
         return
@@ -93,13 +95,15 @@ def _fetch(type, entries):
                 return []
             elif(index == 2 and (tmp_int) <= 0):
                 return []
+        elif(index == 3 and utils.checkDateValidity(tmp) == False):
+            return []
         
         ret.append(tmp)
         index += 1
     
     return ret
 
-def _makeform(root, fields):
+def makeform(root, fields):
     entries = []
     for field in fields:
         row = tk.Frame(root)
@@ -112,34 +116,36 @@ def _makeform(root, fields):
     return entries
 
 def updateGUI():
-    global graph1, graph2
+    global window, textConsole, textConsoleSummary, graph1, graph2
 
-    prevLen = len(gm.grades)
     gm.loadLocalGrades()
-    actualLen = len(gm.grades)
     print_grades(gm.grades)
 
-    if((actualLen-prevLen) > 0):
+    #remove graphs to replace them
+    if(len(graph1.winfo_children()) != 0):
+        graph1.winfo_children()[0].destroy()
+    if(len(graph2.winfo_children()) != 0):
+        graph2.winfo_children()[0].destroy()
 
-        #remove graphs to replace them
-        if(len(graph1.winfo_children()) != 0):
-            graph1.winfo_children()[0].destroy()
-        if(len(graph2.winfo_children()) != 0):
-            graph2.winfo_children()[0].destroy()
+    window.update()
+    dim = int(textConsole.winfo_width()*4/(6*3.9))
+    arr = gm.gradesToStats()
+    plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], dim)
+    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], dim)
 
-        window.update()
-        dim = int(textConsole.winfo_width()*4/(6*3.9))
-        arr = gm.gradesToStats()
-        plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], dim)
-        plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], dim)
-    
-    else:
-        window.after(500, updateGUI)
+    #adjust textconsole padding to fill Yview
+    window.update()
+    padding = int((container1.winfo_height() - (textConsole.winfo_height()+textConsoleSummary.winfo_height()))/4)
+    textConsole.configure(pady=padding)
+    textConsoleSummary.configure(pady=padding)
 
 if __name__ == "__main__":
     mp.freeze_support()
-    child = mp.Process(target=gm.loadUNIPIgrades)
-    child.start()
+    #if user is UNIPI then load grades from db
+    if(jl.loadJSON("userdata")[1] == True):
+        child = mp.Process(target=gm.loadUNIPIgrades)
+        child.start()
+        signal.signal(signal.SIGCHLD, lambda sig, frame: updateGUI()) #call updateGUI when child has finished
 
     window = tk.Tk()
     window.resizable(False, False)
@@ -169,6 +175,7 @@ if __name__ == "__main__":
     textConsoleSummary = tk.Text(container2, height = 3, width = 75, wrap = tk.NONE, bg=configJSON["textBGcolor"],
                         fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
 
+    #setup first graph
     graph1 = tk.Frame(master=container1, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
     graph1.pack(side=tk.RIGHT)
 
@@ -178,27 +185,21 @@ if __name__ == "__main__":
     panel = tk.Frame(master=panelContainer, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     panel.pack(pady=25)
 
-    ents = _makeform(panel, const.fields)
+    #setup form to insert/delete grades
+    ents = makeform(panel, const.fields)
     btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
-    addBtn = tk.Button(btnPanel, bg=configJSON["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(_fetch("A", e)), print_grades(gm.grades)]))
+    addBtn = tk.Button(btnPanel, bg=configJSON["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(fetch("A", e)), updateGUI()]))
     addBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
-    rmvBtn = tk.Button(btnPanel, bg=configJSON["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(_fetch("R", e)), print_grades(gm.grades)]))
+    rmvBtn = tk.Button(btnPanel, bg=configJSON["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(fetch("R", e)), updateGUI()]))
     rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
 
+    #setup second graph
     graph2 = tk.Frame(master=container3, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
     graph2.pack(side=tk.RIGHT)
 
     #display data
     updateGUI()
-
-    #adjust gui to fit window size
-    window.update()
-    padding = int((container1.winfo_height() - (textConsole.winfo_height()+textConsoleSummary.winfo_height()))/4)
-    textConsole.configure(pady=padding)
-    textConsoleSummary.configure(pady=padding)
-
-    window.after(10000, updateGUI)
 
     #display window
     window.mainloop()
