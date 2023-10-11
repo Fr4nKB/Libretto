@@ -2,6 +2,7 @@
 TOTCFU = 120
 
 #gui
+init = ['USERNAME', 'PASSWORD']
 fields = ['CORSO', 'VOTO', 'CFU', 'DATA (dd/mm/yyyy)']
 phrase = ["La media ponderata è ", "Media con solo 18 d'ora in poi: ", "Media con solo 30 d'ora in poi: "]
 

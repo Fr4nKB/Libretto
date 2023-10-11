@@ -81,9 +81,9 @@ def loadUNIPIgrades(q):
                     break
 
             except:
-                if(count == 10):
+                if(count == 5):
                     print("Final attempt n."+str(count)+" failed, quitting...")
-                    sys.exit(1)
+                    return False
                 print("Attempt n."+str(count)+" failed, trying again...")
 
         browser.get(const.urls[0])

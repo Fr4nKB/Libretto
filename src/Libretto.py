@@ -73,32 +73,55 @@ def plot_stats(graph, name, x, y, ylim, dpi):
 #converts input from form to array form
 def fetch(type, entries):
 
-    if(type not in ["A", "R"]):
+    if(type not in ["A", "R", "I"]):
         return
 
     ret = []
     index = 0
 
     for entry in entries:
-
+        
         tmp = entry[1].get()
         length = len(tmp)
 
         if(length not in [i for i in range(1, 31)]):
             return []
-        if(type == "R"):
-            return tmp
-        elif(index in [1,2]):
+        
+        #switch case
+        if(index == 0):
+            
+            if(type == "R"):
+                ret.append(tmp)
+                return ret
+            
+            print("0")
+        elif(index == 1):
+
+            if(type == "I"):
+                ret.append(tmp)
+                return ret
+
             if(str.isnumeric(tmp) == False):
                 return []
             tmp_int = int(tmp)
-            if(index == 1 and (tmp_int < 18 or (tmp_int > 30 and tmp_int != 33))):
+
+            if((tmp_int < 18 or (tmp_int > 30 and tmp_int != 33))):
                 return []
-            elif(index == 2 and (tmp_int) <= 0):
+            
+            print("1")
+        elif(index == 2):
+
+            if(str.isnumeric(tmp) == False):
                 return []
+            tmp_int = int(tmp)
+            
+            if((tmp_int) <= 0):
+                return []
+            
+            print("2")
         elif(index == 3 and utils.checkDateValidity(tmp) == False):
             return []
-        
+
         ret.append(tmp)
         index += 1
     
@@ -153,8 +176,46 @@ def poolChild():
     except queue.Empty:
         window.after(500, poolChild)
 
+def addUdata(array, win):
+
+    if(array != []):
+
+        contents = {'uname': array[0], 'pwd': array[1]}
+        jl.saveJSON("userdata", contents)
+
+        try:
+            if(gm.loadUNIPIgrades(mp.Queue()) == False):
+                utils.signalErrorWindow(win, "Dati non validi")
+                return
+        except:
+            utils.signalErrorWindow(win, "Dati non validi")
+            return
+
+    configJSON["init"] = "T"
+    jl.saveJSON("config", configJSON)
+    win.destroy()
+
+def init():
+    win = tk.Tk()
+    win.resizable(False, False)
+    win.configure(bg=configJSON["consoleBGcolor"])
+    win.protocol("WM_DELETE_WINDOW", lambda: None)
+
+    ents = makeform(win, const.init)
+    btnPanel = tk.Frame(master=win, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
+    btnPanel.pack(anchor=tk.CENTER)
+    okBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='OK', command=(lambda e = ents: addUdata(fetch("I", e), win)))
+    okBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
+    manBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='MANUAL', command=(lambda e = ents: addUdata([], win)))
+    manBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
+
+    win.mainloop()
+
 if __name__ == "__main__":
     mp.freeze_support()
+
+    if(configJSON["init"] == "F"):
+        init()
 
     unipi = jl.loadJSON("userdata")[1]
     #if user is UNIPI then load grades from db
@@ -205,9 +266,9 @@ if __name__ == "__main__":
     ents = makeform(panel, const.fields)
     btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
-    addBtn = tk.Button(btnPanel, bg=configJSON["addBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(fetch("A", e)), updateGUI()]))
+    addBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(fetch("A", e)), updateGUI()]))
     addBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
-    rmvBtn = tk.Button(btnPanel, bg=configJSON["rmvBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(fetch("R", e)), updateGUI()]))
+    rmvBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(fetch("R", e)[0]), updateGUI()]))
     rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
 
     #setup second graph
