@@ -1,6 +1,7 @@
-import sys, signal
+import sys
 import tkinter as tk
 import multiprocessing as mp
+import queue
 
 #modules to realiza graphs
 import matplotlib.pyplot as plt
@@ -117,7 +118,7 @@ def makeform(root, fields):
 
 def updateGUI():
     global window, textConsole, textConsoleSummary, graph1, graph2
-
+    
     gm.loadLocalGrades()
     print_grades(gm.grades)
 
@@ -133,19 +134,34 @@ def updateGUI():
     plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], dim)
     plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], dim)
 
+    
     #adjust textconsole padding to fill Yview
     window.update()
     padding = int((container1.winfo_height() - (textConsole.winfo_height()+textConsoleSummary.winfo_height()))/4)
     textConsole.configure(pady=padding)
     textConsoleSummary.configure(pady=padding)
 
+#refresh GUI when child has finished
+def poolChild():
+    global window, q
+
+    #read from non blocking queue then refresh GUI
+    try:
+        q.get(False)
+        updateGUI()
+    #if queue is empty reschedule check in 500ms
+    except queue.Empty:
+        window.after(500, poolChild)
+
 if __name__ == "__main__":
     mp.freeze_support()
+
+    unipi = jl.loadJSON("userdata")[1]
     #if user is UNIPI then load grades from db
-    if(jl.loadJSON("userdata")[1] == True):
-        child = mp.Process(target=gm.loadUNIPIgrades)
+    if(unipi):
+        q = mp.Queue()
+        child = mp.Process(target=gm.loadUNIPIgrades, args={q})
         child.start()
-        signal.signal(signal.SIGCHLD, lambda sig, frame: updateGUI()) #call updateGUI when child has finished
 
     window = tk.Tk()
     window.resizable(False, False)
@@ -200,6 +216,8 @@ if __name__ == "__main__":
 
     #display data
     updateGUI()
+    if(unipi):
+        window.after(1000, poolChild)
 
     #display window
     window.mainloop()

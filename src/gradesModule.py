@@ -1,4 +1,5 @@
-import sys, time, datetime, re
+import sys, time, datetime
+from multiprocessing import Queue
 
 #modules for HTTP requests
 import requests
@@ -39,12 +40,12 @@ def loadCookies(browser):
         browser.add_cookie({"name": 'JSESSIONID', "value": cookiesJSON['JSESSIONID']})
         browser.get(const.urls[0])
 
-        return (browser.current_url != const.urls[1])
+        return ((browser.current_url == const.urls[0]) or (browser.current_url == const.urls[1]))
     
     else:
         return False
 
-def loadUNIPIgrades():
+def loadUNIPIgrades(q):
     global grades
 
     opt = Options()
@@ -148,6 +149,8 @@ def loadUNIPIgrades():
         for elem in grades:
             file.write(elem)
         file.close()
+
+    q.put("")
 
 def loadLocalGrades():
     global grades
