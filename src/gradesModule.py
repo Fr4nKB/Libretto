@@ -9,20 +9,12 @@ from selenium.webdriver.common.by import By
 
 #custom modules
 import jsonHandler as jl
-import utils
 import constants as const
 
 grades = [] #all the grades will be loaded here
 configJSON, res = jl.loadJSON("config")
 if(res == False):
     sys.exit(1)
-udataJSON, res = jl.loadJSON("userdata")
-if(res == True):
-    payload2 = {
-        'j_username': udataJSON['uname'],
-        'j_password': udataJSON['pwd'],
-        '_eventId_proceed': ''
-    }
 
 #contents must be dict
 def saveCookies(contents):
@@ -45,13 +37,21 @@ def loadCookies(browser):
     else:
         return False
 
-def loadUNIPIgrades(q):
+def loadUNIPIgrades(q = None):
     global grades
 
     opt = Options()
     opt.add_argument("--headless=new")
     opt.add_argument('--log-level=3')
     browser = webdriver.Chrome(options = opt)
+
+    udataJSON, res = jl.loadJSON("userdata")
+    if(res == True):
+        payload2 = {
+            'j_username': udataJSON['uname'],
+            'j_password': udataJSON['pwd'],
+            '_eventId_proceed': ''
+        }
 
     print("Trying to connect using previous session: ", end = '', flush = True)
     if(loadCookies(browser) == False):
@@ -150,7 +150,9 @@ def loadUNIPIgrades(q):
             file.write(elem)
         file.close()
 
-    q.put("")
+    #used to communicate to parent when finished processing
+    if(q != None):
+        q.put("")
 
 def loadLocalGrades():
     global grades

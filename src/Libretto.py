@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import tkinter as tk
 import multiprocessing as mp
 import queue
@@ -93,8 +93,7 @@ def fetch(type, entries):
             if(type == "R"):
                 ret.append(tmp)
                 return ret
-            
-            print("0")
+
         elif(index == 1):
 
             if(type == "I"):
@@ -108,7 +107,7 @@ def fetch(type, entries):
             if((tmp_int < 18 or (tmp_int > 30 and tmp_int != 33))):
                 return []
             
-            print("1")
+
         elif(index == 2):
 
             if(str.isnumeric(tmp) == False):
@@ -118,7 +117,7 @@ def fetch(type, entries):
             if((tmp_int) <= 0):
                 return []
             
-            print("2")
+
         elif(index == 3 and utils.checkDateValidity(tmp) == False):
             return []
 
@@ -184,12 +183,17 @@ def addUdata(array, win):
         jl.saveJSON("userdata", contents)
 
         try:
-            if(gm.loadUNIPIgrades(mp.Queue()) == False):
+            if(gm.loadUNIPIgrades() == False):
                 utils.signalErrorWindow(win, "Dati non validi")
                 return
         except:
             utils.signalErrorWindow(win, "Dati non validi")
             return
+    else:
+        if os.path.exists("./docs/userdata.json"):
+            os.remove("./docs/userdata.json")
+        if os.path.exists("./docs/session.json"):
+            os.remove("./docs/session.json")
 
     configJSON["init"] = "T"
     jl.saveJSON("config", configJSON)

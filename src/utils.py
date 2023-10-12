@@ -15,7 +15,4 @@ def checkDateValidity(date):
 def signalErrorWindow(window, error):
     
     tk.messagebox.showerror('Libretto', 'Errore: '+error)
-
-    # Create a button to delete the button
-    b = tk.Button(window, text="OK", command=tk.on_click)
-    b.pack(pady=20)
+    
