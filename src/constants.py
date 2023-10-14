@@ -1,5 +1,6 @@
 #stuff
 TOTCFU = 120
+MAXNAMELEN = 51 #desired length + 1
 
 #gui
 init = ['USERNAME', 'PASSWORD']
