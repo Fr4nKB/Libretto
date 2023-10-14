@@ -1,4 +1,4 @@
-import sys, time, datetime
+import sys, time, datetime, re
 from multiprocessing import Queue
 
 #modules for HTTP requests
@@ -243,11 +243,26 @@ def loadUNIPIgrades(q = None):
         browser.add_cookie({"name": 'JSESSIONID', "value": req_cookies['JSESSIONID']})
         browser.get(const.urls[0])
 
-    #select latest career
+    #select career
     if(browser.current_url == const.urls[0]):
+
         time.sleep(1)   #wait for the page to fully load
-        url = browser.find_elements(By.ID, 'gu_toolbar_sceltacarriera')[0].find_element(By.CLASS_NAME, 'toolbar-button-blu').get_attribute('href')
+
+        try:    #fetch career
+            choice = int(udataJSON["career"])
+        except: #otherwise make user chose
+            arr = browser.find_elements(By.CLASS_NAME, 'table-1-body')
+            if(len(arr) >= 0):
+                for elem in arr:
+                    choices = re.findall(r"(\b(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b(?:\s+(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b)*)", elem.text)
+                choice = utils.optionMenu("SELEZIONA CARRIERA", choices)
+
+                udataJSON["career"] = str(choice)
+                jl.saveJSON("userdata", udataJSON)
+
+        url = browser.find_elements(By.ID, 'gu_toolbar_sceltacarriera')[choice].find_element(By.CLASS_NAME, 'toolbar-button-blu').get_attribute('href')
         browser.get(url)
+
     elif(browser.current_url != const.urls[0]):
         print("Error connecting to UNIPI servers")
         sys.exit(1)

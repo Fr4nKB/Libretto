@@ -1,4 +1,4 @@
-import sys, os, datetime
+import sys, os
 import tkinter as tk
 import multiprocessing as mp
 import queue
@@ -139,10 +139,10 @@ def addUdata(array, win):
 
         try:
             if(gm.loadUNIPIgrades() == False):
-                utils.signalErrorWindow(win, "Dati non validi")
+                utils.signalErrorWindow("Dati non validi")
                 return
         except:
-            utils.signalErrorWindow(win, "Dati non validi")
+            utils.signalErrorWindow("Dati non validi")
             return
     else:
         if os.path.exists("./docs/userdata.json"):

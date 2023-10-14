@@ -1,5 +1,8 @@
-import datetime, time
+import sys, datetime, time
 import tkinter as tk
+
+import jsonHandler as jl
+import utils
 
 #converts input from form to array
 def fetch(type, entries):
@@ -34,6 +37,42 @@ def checkDateValidity(date):
     except:
         return 0
     
-def signalErrorWindow(window, error):
+def signalErrorWindow(error):
     
     tk.messagebox.showerror('Libretto', 'Errore: '+error)
+
+def __answerMenu(win, options, choice):
+    if(choice not in options):
+        pass        
+    else:
+        win.destroy()
+
+def optionMenu(name, options):
+
+    configJSON,res = jl.loadJSON("config")
+    if(res == False):
+        sys.exit(1)
+
+    win = tk.Tk()
+    win.title(name)
+    win.resizable(False, False)
+    win.configure(bg=configJSON["consoleBGcolor"])
+    win.protocol("WM_DELETE_WINDOW", lambda: None)
+    
+    label = tk.Label(win,  text='Seleziona una carriera:')
+    label.grid(column=0, row=0, sticky=tk.W)
+
+    #keep track of the option selected in OptionMenu
+    choice = tk.StringVar(win)
+    choice.set("-----")
+
+    # option menu
+    option_menu = tk.OptionMenu(win, choice, *options)
+    option_menu.grid(column=1, row=0, sticky=tk.W)
+
+    okBtn = tk.Button(win, bg=configJSON["posBtnColor"], text='OK', command=lambda: __answerMenu(win, options, choice.get()))
+    okBtn.grid(column=0, row=1, sticky=tk.W)
+    
+    win.mainloop()
+
+    return options.index(choice.get())
