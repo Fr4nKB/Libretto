@@ -20,6 +20,7 @@ configJSON,res = jl.loadJSON("config")
 if(res == False):
     sys.exit(1)
 
+#set theme for graphs
 plt.rcParams.update({"figure.facecolor" : configJSON["consoleBGcolor"],
                     "axes.facecolor" : configJSON["textBGcolor"],
                     "xtick.color" : "white",
@@ -31,10 +32,9 @@ def print_grades(grades):
 
     #output grades
     textConsole.config(state=tk.NORMAL)     #make console writable
-    textConsole.delete('1.0', tk.END)   #flush content
+    textConsole.delete('1.0', tk.END)   #flush old content
 
-    for elem in grades:
-        textConsole.insert(tk.END, elem)
+    textConsole.insert(tk.END, grades)
 	
     textConsole.pack(side=tk.TOP, fill=tk.X)
     textConsole.config(state=tk.DISABLED)   #make console read only
@@ -43,94 +43,56 @@ def print_grades(grades):
     textConsoleSummary.config(state=tk.NORMAL)     #make console writable
     textConsoleSummary.delete('1.0', tk.END)   #flush content
 
-    ret = gm.avg()
-    index = 0
-    for elem in ret:
-        textConsoleSummary.insert(tk.END, const.phrase[index]+str(elem)+"\n")
-        index += 1
+    ret = gm.grades.avg()
+    for i, elem in enumerate(ret):
+        textConsoleSummary.insert(tk.END, const.phrase[i]+str(elem)+"\n")
 
     textConsoleSummary.pack(side=tk.TOP, fill=tk.X)
     textConsoleSummary.config(state=tk.DISABLED)   #make console read only
 
 def plot_stats(graph, name, x, y, ylim, dpi):
 
+    #create plot
     fig = Figure(figsize=(3.9, 3), dpi = dpi)
     subplot = fig.add_subplot(111)
     subplot.plot(x, y, marker='o', color=configJSON["graphLine"])
     subplot.set_title(name)
-    fig.gca().set_ylim(ylim)
+
+    fig.gca().set_ylim(ylim)    #set max y range
+
+    #setup x axis to display dates
     fig.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%y'))
-    if(len(x) > 1):
-        fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=30))
-    fig.autofmt_xdate(rotation=30, ha="center")
     
+    #take furthest dates and compute the number of days in between, set graph interval
+    if(len(x) > 1):
+        duration = (x[len(x) - 1] - x[0])
+        dur_secs = duration.total_seconds()
+        days  = duration.days
+        days  = int(divmod(dur_secs, 86400)[0])
+        intrvl = int(days/7)
+        if(intrvl < 15):    #avoid too much dates when grades are close to each other
+            intrvl = 15
+        fig.gca().xaxis.set_major_locator(mdates.DayLocator(interval=intrvl))
+
+    fig.autofmt_xdate(rotation=30, ha="center")
+
+    #display on last point of the graph the y amount
+    dim = len(x)
+    if(dim > 0):
+        fig.gca().annotate(y[dim-1], (x[dim-1], y[dim-1]), ha="right")
+    
+    #draw
     canvas = FigureCanvasTkAgg(fig, master = graph)
     canvas.draw()
     canvas.get_tk_widget().pack()
-    
-    return
-
-#converts input from form to array form
-def fetch(type, entries):
-
-    if(type not in ["A", "R", "I"]):
-        return
-
-    ret = []
-    index = 0
-
-    for entry in entries:
-        
-        tmp = entry[1].get()
-        length = len(tmp)
-
-        if(length not in [i for i in range(1, 31)]):
-            return []
-        
-        #switch case
-        if(index == 0):
-            
-            if(type == "R"):
-                ret.append(tmp)
-                return ret
-
-        elif(index == 1):
-
-            if(type == "I"):
-                ret.append(tmp)
-                return ret
-
-            if(str.isnumeric(tmp) == False):
-                return []
-            tmp_int = int(tmp)
-
-            if((tmp_int < 18 or (tmp_int > 30 and tmp_int != 33))):
-                return []
-            
-
-        elif(index == 2):
-
-            if(str.isnumeric(tmp) == False):
-                return []
-            tmp_int = int(tmp)
-            
-            if((tmp_int) <= 0):
-                return []
-            
-
-        elif(index == 3 and utils.checkDateValidity(tmp) == False):
-            return []
-
-        ret.append(tmp)
-        index += 1
-    
-    return ret
 
 def makeform(root, fields):
     entries = []
     for field in fields:
         row = tk.Frame(root)
         ent = tk.Entry(row, bg=configJSON["formInput"], highlightthickness=0, relief=tk.FLAT, fg=configJSON["formText"])
+        if(field == "PASSWORD"):
+            ent.configure(show='*')
         ent.insert(0, field)
         
         row.pack(padx=15, pady=15)
@@ -141,8 +103,8 @@ def makeform(root, fields):
 def updateGUI():
     global window, textConsole, textConsoleSummary, graph1, graph2
     
-    gm.loadLocalGrades()
-    print_grades(gm.grades)
+    gm.grades.loadFromFile()
+    print_grades(gm.grades.toString())
 
     #remove graphs to replace them
     if(len(graph1.winfo_children()) != 0):
@@ -152,19 +114,12 @@ def updateGUI():
 
     window.update()
     dim = int(textConsole.winfo_width()*4/(6*3.9))
-    arr = gm.gradesToStats()
-    plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,30], dim)
-    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU], dim)
-
-    
-    #adjust textconsole padding to fill Yview
-    window.update()
-    padding = int((container1.winfo_height() - (textConsole.winfo_height()+textConsoleSummary.winfo_height()))/4)
-    textConsole.configure(pady=padding)
-    textConsoleSummary.configure(pady=padding)
+    arr = gm.grades.toStats()
+    plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,31], dim)
+    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU+1], dim)
 
 #refresh GUI when child has finished
-def poolChild():
+def pollChild():
     global window, q
 
     #read from non blocking queue then refresh GUI
@@ -173,7 +128,7 @@ def poolChild():
         updateGUI()
     #if queue is empty reschedule check in 500ms
     except queue.Empty:
-        window.after(500, poolChild)
+        window.after(500, pollChild)
 
 def addUdata(array, win):
 
@@ -184,10 +139,10 @@ def addUdata(array, win):
 
         try:
             if(gm.loadUNIPIgrades() == False):
-                utils.signalErrorWindow(win, "Dati non validi")
+                utils.signalErrorWindow("Dati non validi")
                 return
         except:
-            utils.signalErrorWindow(win, "Dati non validi")
+            utils.signalErrorWindow("Dati non validi")
             return
     else:
         if os.path.exists("./docs/userdata.json"):
@@ -208,7 +163,7 @@ def init():
     ents = makeform(win, const.init)
     btnPanel = tk.Frame(master=win, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
-    okBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='OK', command=(lambda e = ents: addUdata(fetch("I", e), win)))
+    okBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='OK', command=(lambda e = ents: addUdata(utils.fetch("I", e), win)))
     okBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
     manBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='MANUAL', command=(lambda e = ents: addUdata([], win)))
     manBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
@@ -270,9 +225,9 @@ if __name__ == "__main__":
     ents = makeform(panel, const.fields)
     btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
-    addBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.add_grade(fetch("A", e)), updateGUI()]))
+    addBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.grades.addGrade(utils.fetch("A", e)), updateGUI()]))
     addBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
-    rmvBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.remove_grade(fetch("R", e)[0]), updateGUI()]))
+    rmvBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.grades.removeGrade(utils.fetch("R", e)), updateGUI()]))
     rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
 
     #setup second graph
@@ -282,7 +237,7 @@ if __name__ == "__main__":
     #display data
     updateGUI()
     if(unipi):
-        window.after(1000, poolChild)
+        window.after(1000, pollChild)
 
     #display window
     window.mainloop()

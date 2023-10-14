@@ -1,4 +1,4 @@
-import sys, time, datetime
+import sys, time, datetime, re
 from multiprocessing import Queue
 
 #modules for HTTP requests
@@ -10,13 +10,163 @@ from selenium.webdriver.common.by import By
 #custom modules
 import jsonHandler as jl
 import constants as const
+import utils
 
-grades = [] #all the grades will be loaded here
+class Grades:
+
+    def __init__(this):
+        this.__grades = []
+
+    def __checkInput(this, array):
+        if(len(array) != 4):
+            return False
+        
+        name, gradeStr, cfuStr, date = array
+        
+        #check types
+        if(type(name) != str or type(gradeStr) != str
+           or type(cfuStr) != str or type(date) != str):
+            return False
+        
+        if(gradeStr.isnumeric()):
+            grade = int(gradeStr)
+        else:
+            return False
+        
+        if(cfuStr.isnumeric()):
+            cfu = int(cfuStr)
+        else:
+            return False
+        
+        #check length of name
+        if(len(name) not in [i for i in range(1, const.MAXNAMELEN)]):
+            return False
+        
+        #check validity of date
+        timestamp = utils.checkDateValidity(date)
+        if(timestamp == False):
+            return False
+        
+        #check validity of grade and cfu
+        if((grade < 18 or (grade > 30 and grade != 33))):
+                return False
+        if(cfu <= 0):
+            return False
+        
+        return (timestamp, name, grade, cfu, date)
+
+    def addGrade(this, array):
+        
+        elem = this.__checkInput(array)
+
+        #check for exact repetition
+        if(any(elem == s for s in this.__grades)):
+            return False
+        
+        this.__grades.append(elem)
+        this.__grades.sort(key = lambda x: x[0], reverse=False)   #sort by date
+
+        this.saveToFile()
+
+        return True
+
+    def removeGrade(this, array):
+
+        elem = this.__checkInput(array)
+
+        if(any(elem == s for s in this.__grades)):
+            this.__grades.remove(elem)
+            this.saveToFile()
+            return True
+    
+        return False
+
+    def avg(this):
+        avg = 0
+        cfuSum = 0
+
+        for elem in this.__grades:
+            cfuSum += elem[3]
+            
+            if(elem[2] == 33):     #30L = 33, counts as 30
+                tmp = 30
+            else:
+                tmp = elem[2]
+
+            avg += tmp*elem[3]
+
+        mingrade = (avg + 18*(const.TOTCFU - cfuSum))/const.TOTCFU
+        maxgrade = (avg + 30*(const.TOTCFU - cfuSum))/const.TOTCFU
+
+        if(cfuSum != 0):
+            avg /= cfuSum
+
+        return round(avg, 2), round(mingrade, 2), round(maxgrade, 2)
+
+    def loadFromFile(this):
+
+        this.flush()
+
+        try:
+            with open("./docs/esami.txt", "r") as file:
+                contents = file.readlines()
+                file.close()
+
+            for elem in contents:
+                tokenizedStr = elem.split(", ")
+
+                if(len(tokenizedStr) != 4):
+                    return
+                else:
+                    date = tokenizedStr[3][:len(tokenizedStr[3])-1]
+                    this.addGrade([tokenizedStr[0], tokenizedStr[1], tokenizedStr[2], date])
+
+        except:
+            this.__grades = []      
+
+    def saveToFile(this):
+
+        file = open("./docs/esami.txt", "w")
+        file.write(this.toString())
+        file.close() 
+
+    def toString(this):
+        res = ""
+        for elem in this.__grades:
+            res += f"{elem[1]}, {elem[2]}, {elem[3]}, {elem[4]}\n"
+        return res
+    
+    def toStats(this):
+
+        stats = [[], [], []]
+
+        cfuSUM = 0
+        avg = 0
+        for elem in this.__grades:
+            cfuSUM += elem[3]
+
+            if(elem[2] == 33):
+                tmp = 30
+            else:
+                tmp = elem[2]
+                
+            avg += tmp*elem[3]
+
+            stats[0].append(datetime.datetime.strptime(elem[4],'%d/%m/%Y').date())
+            stats[1].append(round(avg/cfuSUM, 2))
+            stats[2].append(cfuSUM)
+
+        return stats
+
+    def flush(this):
+        this.__grades.clear()
+
+grades = Grades()
+
 configJSON, res = jl.loadJSON("config")
 if(res == False):
     sys.exit(1)
 
-#contents must be dict
 def saveCookies(contents):
     if(type(contents) != dict):
         return
@@ -93,11 +243,26 @@ def loadUNIPIgrades(q = None):
         browser.add_cookie({"name": 'JSESSIONID', "value": req_cookies['JSESSIONID']})
         browser.get(const.urls[0])
 
-    #select latest career
+    #select career
     if(browser.current_url == const.urls[0]):
+
         time.sleep(1)   #wait for the page to fully load
-        url = browser.find_elements(By.ID, 'gu_toolbar_sceltacarriera')[0].find_element(By.CLASS_NAME, 'toolbar-button-blu').get_attribute('href')
+
+        try:    #fetch career
+            choice = int(udataJSON["career"])
+        except: #otherwise make user chose
+            arr = browser.find_elements(By.CLASS_NAME, 'table-1-body')
+            if(len(arr) >= 0):
+                for elem in arr:
+                    choices = re.findall(r"(\b(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b(?:\s+(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b)*)", elem.text)
+                choice = utils.optionMenu("SELEZIONA CARRIERA", choices)
+
+                udataJSON["career"] = str(choice)
+                jl.saveJSON("userdata", udataJSON)
+
+        url = browser.find_elements(By.ID, 'gu_toolbar_sceltacarriera')[choice].find_element(By.CLASS_NAME, 'toolbar-button-blu').get_attribute('href')
         browser.get(url)
+
     elif(browser.current_url != const.urls[0]):
         print("Error connecting to UNIPI servers")
         sys.exit(1)
@@ -110,7 +275,7 @@ def loadUNIPIgrades(q = None):
     rawData = ((browser.find_element(By.ID, 'tableLibretto')).find_element(By.CLASS_NAME, 'table-1-body')).text.split('\n')
 
     index = 0
-    grades.clear()
+    toSave = ""
     while(index < len(rawData)):
         
         tmp = rawData[index+1].split('-')
@@ -138,127 +303,16 @@ def loadUNIPIgrades(q = None):
             elem += " NaN"
         
         elem += '\n'
-
-        grades.append(elem)
+        toSave += elem
         index += 2
 
     browser.quit()
 
     #save grades locally
     with open("./docs/esami.txt", "w") as file:
-        for elem in grades:
-            file.write(elem)
+        file.write(toSave)
         file.close()
 
     #used to communicate to parent when finished processing
     if(q != None):
         q.put("")
-
-def loadLocalGrades():
-    global grades
-
-    try:
-        with open("./docs/esami.txt", "r") as file:
-            grades = file.readlines()
-            file.close()
-    except:
-        grades = []
-
-def avg():
-    global grades
-
-    avg = 0
-    cfuSum = 0
-    tokenizedGrades = [elem.split(", ") for elem in grades]
-    length = len(grades)
-
-    for i in range(length):
-        if(len(tokenizedGrades[i]) != 4):
-            continue
-        grade = int(tokenizedGrades[i][1])
-        if(grade > 30):     #30L = 33, counts as 30
-            grade = 30
-        elif(grade < 18):
-            continue
-        avg += grade*int(tokenizedGrades[i][2])
-        cfuSum += int(tokenizedGrades[i][2])
-
-    mingrade = (avg + 18*(const.TOTCFU - cfuSum))/const.TOTCFU
-    maxgrade = (avg + 30*(const.TOTCFU - cfuSum))/const.TOTCFU
-    if(cfuSum != 0):
-        avg /= cfuSum
-
-    return round(avg, 2), round(mingrade, 2), round(maxgrade, 2)
-
-def add_grade(elem):
-    global grades
-
-    if(elem == []):
-        return False
-    
-    toAdd = elem[0]+", "+elem[1]+", "+elem[2]+", "+elem[3]+"\n"
-
-    #no repeating courses
-    if(any(elem[0] in s for s in grades)):
-        return False
-
-    grades.append(toAdd)
-
-    file = open("./docs/esami.txt", "w")
-    for elem in grades:
-        file.write(elem)
-    file.close()
-
-    return True
-
-def remove_grade(subject):
-    global grades
-
-    if(len(subject) <= 0):
-        return False
-
-    toRemove = [x for x in grades if subject in x]
-    if(len(toRemove) == 0):
-        return False
-    
-    grades.remove(toRemove[0])
-
-    file = open("./docs/esami.txt", "w")
-    for elem in grades:
-        file.write(elem)
-    file.close()
-
-    return True
-   
-def gradesToStats():
-    global grades
-
-    objects = []
-    toGraph = [[], [], []]
-
-    for elem in grades:
-        contents = elem.split(', ')
-        date = contents[3][:len(contents[3])-1]
-        timestruct = time.strptime(date, "%d/%m/%Y")
-
-        objects.append((int(time.mktime(timestruct)), date, int(contents[1]), int(contents[2])))
-
-    objects.sort(key=lambda x: x[0], reverse=False)
-
-    cfuSUM = 0
-    avg = 0
-    for elem in objects:
-        cfuSUM += elem[3]
-
-        if(elem[2] == 33):
-            tmp = 30
-        else:
-            tmp = elem[2]
-            
-        avg += tmp*elem[3]
-
-        toGraph[0].append(datetime.datetime.strptime(elem[1],'%d/%m/%Y').date())
-        toGraph[1].append(round(avg/cfuSUM, 2))
-        toGraph[2].append(cfuSUM)
-
-    return toGraph
