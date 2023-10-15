@@ -96,7 +96,7 @@ def makeform(root, fields):
             ent.configure(show='*')
         ent.insert(0, field)
         
-        row.pack(padx=15, pady=15)
+        row.pack(padx=25, pady=(20,0))
         ent.pack(side=tk.LEFT)
         entries.append((field, ent))
     return entries
@@ -116,8 +116,8 @@ def updateGUI():
     window.update()
     dim = int(textConsole.winfo_width()*4/(6*3.9))
     arr = gm.grades.toStats()
-    plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,31], dim)
-    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, gm.grades.TOTCFU+1], dim)
+    plot_stats(graph1, "Andamento media", arr[0], arr[1], [17,31], dim)
+    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, gm.grades.TOTCFU+10], dim)
 
 #refresh GUI when child has finished
 def pollChild():
@@ -131,6 +131,7 @@ def pollChild():
     except queue.Empty:
         window.after(500, pollChild)
 
+#stores unipi user's data in a json to automate login
 def addUdata(array, win):
 
     if(array != []):
@@ -155,26 +156,35 @@ def addUdata(array, win):
     jl.saveJSON("config", configJSON)
     win.destroy()
 
+#first time configuration
 def init():
     win = tk.Tk()
+    win.title("")
+    win.geometry("200x200")
     win.resizable(False, False)
-    win.configure(bg=configJSON["consoleBGcolor"])
-    win.protocol("WM_DELETE_WINDOW", lambda: None)
+    win.configure(bg=configJSON["panelBGcolor"])
+    
+    panel = tk.Frame(master=win, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
+    panel.pack(expand=True)
 
-    ents = makeform(win, const.init)
-    btnPanel = tk.Frame(master=win, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
+    ents = makeform(panel, const.init)
+    btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
-    okBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='OK', command=(lambda e = ents: addUdata(utils.fetch("I", e), win)))
+    okBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='UNIPI', command=(lambda e = ents: addUdata(utils.fetch("I", e), win)))
     okBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
     manBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='MANUAL', command=(lambda e = ents: addUdata([], win)))
     manBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
 
     win.mainloop()
 
+    if(configJSON["init"] != "T"):
+        sys.exit(1)
+
 if __name__ == "__main__":
     mp.freeze_support()
 
-    if(configJSON["init"] == "F"):
+    #check if already configured
+    if(configJSON["init"] != "T"):
         init()
 
     unipi = jl.loadJSON("userdata")[1]
@@ -217,19 +227,17 @@ if __name__ == "__main__":
     graph1.pack(side=tk.RIGHT)
 
     #setup control panel
-    panelContainer = tk.Frame(master=container3, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
-    panelContainer.pack(expand=True, side=tk.LEFT)
-    panel = tk.Frame(master=panelContainer, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
-    panel.pack(pady=25)
+    panel = tk.Frame(master=container3, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
+    panel.pack(expand=True, side=tk.LEFT)
 
     #setup form to insert/delete grades
     ents = makeform(panel, const.fields)
     btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
     addBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.grades.addGrade(utils.fetch("A", e)), updateGUI()]))
-    addBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
+    addBtn.pack(side=tk.LEFT, padx=5, pady=20)
     rmvBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.grades.removeGrade(utils.fetch("R", e)), updateGUI()]))
-    rmvBtn.pack(side=tk.RIGHT, padx=5, pady=(15,25))
+    rmvBtn.pack(side=tk.RIGHT, padx=5, pady=20)
 
     #setup second graph
     graph2 = tk.Frame(master=container3, borderwidth=0, bg=configJSON["consoleBGcolor"], highlightthickness=0)
@@ -239,6 +247,8 @@ if __name__ == "__main__":
     updateGUI()
     if(unipi):
         window.after(1000, pollChild)
+
+    textConsoleSummary.configure(pady=10)
 
     #display window
     window.mainloop()

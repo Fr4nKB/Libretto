@@ -1,7 +1,5 @@
 import sys, datetime, time
 import tkinter as tk
-from multiprocessing import Queue
-
 import jsonHandler as jl
 
 #converts input from form to array
@@ -47,30 +45,34 @@ def __answerMenu(choiceWin, options, choice):
     else:
         choiceWin.destroy()
 
-def optionMenu(name, options, q):
+def optionMenu(options, q):
 
     configJSON, res = jl.loadJSON("config")
     if(res == False):
         sys.exit(1)
 
     choiceWin = tk.Tk()
-    choiceWin.title(name)
+    choiceWin.title("")
+    choiceWin.geometry("200x200")
     choiceWin.resizable(False, False)
-    choiceWin.configure(bg=configJSON["consoleBGcolor"])
+    choiceWin.configure(bg=configJSON["panelBGcolor"])
     choiceWin.protocol("WM_DELETE_WINDOW", lambda: None)
     
-    label = tk.Label(choiceWin,  text='Seleziona una carriera:')
+    panel = tk.Frame(master=choiceWin, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
+    panel.pack(expand=True)
+    
+    label = tk.Label(panel, text='Seleziona una carriera:')
     label.grid(column=0, row=0, sticky=tk.W)
 
     #keep track of the option selected in OptionMenu
-    choice = tk.StringVar(choiceWin)
+    choice = tk.StringVar(panel)
     choice.set("-----")
 
     # option menu
-    option_menu = tk.OptionMenu(choiceWin, choice, *options)
+    option_menu = tk.OptionMenu(panel, choice, *options)
     option_menu.grid(column=1, row=0, sticky=tk.W)
 
-    okBtn = tk.Button(choiceWin, bg=configJSON["posBtnColor"], text='OK', command=lambda: __answerMenu(choiceWin, options, choice.get()))
+    okBtn = tk.Button(panel, bg=configJSON["posBtnColor"], text='OK', command=lambda: __answerMenu(choiceWin, options, choice.get()))
     okBtn.grid(column=0, row=1, sticky=tk.W)
 
     choiceWin.mainloop()

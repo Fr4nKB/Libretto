@@ -104,7 +104,7 @@ def loadUnipiGrades(q = None):
                     choices = re.findall(r"(\b(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b(?:\s+(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b)*)", elem.text)
                 
                 careerQ = mp.Queue()
-                child = mp.Process(target=utils.optionMenu, args=("SELEZIONA CARRIERA", choices, careerQ))
+                child = mp.Process(target=utils.optionMenu, args=(choices, careerQ))
                 child.start()
                 child.join()
                 choice = careerQ.get()

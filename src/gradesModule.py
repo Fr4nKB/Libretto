@@ -1,7 +1,6 @@
-import sys, datetime
+import datetime
 
 #custom modules
-import jsonHandler as jl
 import constants as const
 import utils
 
@@ -44,7 +43,7 @@ class Grades:
         #check validity of grade and cfu
         if((grade < 18 or (grade > 30 and grade != 33))):
                 return False
-        if(cfu <= 0):
+        if(cfu <= 0 or cfu > 30):
             return False
         
         return (timestamp, name, grade, cfu, date)
