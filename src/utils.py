@@ -43,7 +43,7 @@ def signalErrorWindow(error):
 
 def __answerMenu(win, options, choice):
     if(choice not in options):
-        pass        
+        pass    
     else:
         win.destroy()
 
