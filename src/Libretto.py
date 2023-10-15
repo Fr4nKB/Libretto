@@ -12,6 +12,7 @@ from matplotlib.backends.backend_tkagg import (
 
 #custom modules
 import gradesModule as gm
+import networking as net
 import jsonHandler as jl
 import utils
 import constants as const
@@ -138,7 +139,7 @@ def addUdata(array, win):
         jl.saveJSON("userdata", contents)
 
         try:
-            if(gm.loadUNIPIgrades() == False):
+            if(net.loadUnipiGrades() == False):
                 utils.signalErrorWindow("Dati non validi")
                 return
         except:
@@ -180,7 +181,7 @@ if __name__ == "__main__":
     #if user is UNIPI then load grades from db
     if(unipi):
         q = mp.Queue()
-        child = mp.Process(target=gm.loadUNIPIgrades, args={q})
+        child = mp.Process(target=net.loadUnipiGrades, args={q})
         child.start()
 
     window = tk.Tk()
