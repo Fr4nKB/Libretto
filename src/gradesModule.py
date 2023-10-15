@@ -9,6 +9,7 @@ class Grades:
 
     def __init__(this):
         this.__grades = []
+        this.TOTCFU = const.TOTCFU[0]
 
     def __checkInput(this, array):
         if(len(array) != 4):
@@ -88,8 +89,13 @@ class Grades:
 
             avg += tmp*elem[3]
 
-        mingrade = (avg + 18*(const.TOTCFU - cfuSum))/const.TOTCFU
-        maxgrade = (avg + 30*(const.TOTCFU - cfuSum))/const.TOTCFU
+        for elem in const.TOTCFU:
+            if(elem >= cfuSum):
+                this.TOTCFU = elem
+                break
+
+        mingrade = (avg + 18*(this.TOTCFU - cfuSum))/this.TOTCFU
+        maxgrade = (avg + 30*(this.TOTCFU - cfuSum))/this.TOTCFU
 
         if(cfuSum != 0):
             avg /= cfuSum

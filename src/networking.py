@@ -1,4 +1,5 @@
 import sys, time, re
+import multiprocessing as mp
 
 #modules for HTTP requests
 import requests
@@ -102,8 +103,12 @@ def loadUnipiGrades(q = None):
                 for elem in arr:
                     choices = re.findall(r"(\b(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b(?:\s+(?:[A-Z]+[a-z]?[A-Z]*|[A-Z]*[a-z]?[A-Z]+)\b)*)", elem.text)
                 
-                choice = utils.optionMenu("SELEZIONA CARRIERA", choices)
-                
+                careerQ = mp.Queue()
+                child = mp.Process(target=utils.optionMenu, args=("SELEZIONA CARRIERA", choices, careerQ))
+                child.start()
+                child.join()
+                choice = careerQ.get()
+
                 udataJSON["career"] = str(choice)
                 jl.saveJSON("userdata", udataJSON)
 

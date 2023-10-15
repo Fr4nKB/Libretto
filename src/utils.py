@@ -1,8 +1,8 @@
 import sys, datetime, time
 import tkinter as tk
+from multiprocessing import Queue
 
 import jsonHandler as jl
-import utils
 
 #converts input from form to array
 def fetch(type, entries):
@@ -41,38 +41,38 @@ def signalErrorWindow(error):
     
     tk.messagebox.showerror('Libretto', 'Errore: '+error)
 
-def __answerMenu(win, options, choice):
+def __answerMenu(choiceWin, options, choice):
     if(choice not in options):
         pass    
     else:
-        win.destroy()
+        choiceWin.destroy()
 
-def optionMenu(name, options):
+def optionMenu(name, options, q):
 
-    configJSON,res = jl.loadJSON("config")
+    configJSON, res = jl.loadJSON("config")
     if(res == False):
         sys.exit(1)
 
-    win = tk.Tk()
-    win.title(name)
-    win.resizable(False, False)
-    win.configure(bg=configJSON["consoleBGcolor"])
-    win.protocol("WM_DELETE_WINDOW", lambda: None)
+    choiceWin = tk.Tk()
+    choiceWin.title(name)
+    choiceWin.resizable(False, False)
+    choiceWin.configure(bg=configJSON["consoleBGcolor"])
+    choiceWin.protocol("WM_DELETE_WINDOW", lambda: None)
     
-    label = tk.Label(win,  text='Seleziona una carriera:')
+    label = tk.Label(choiceWin,  text='Seleziona una carriera:')
     label.grid(column=0, row=0, sticky=tk.W)
 
     #keep track of the option selected in OptionMenu
-    choice = tk.StringVar(win)
+    choice = tk.StringVar(choiceWin)
     choice.set("-----")
 
     # option menu
-    option_menu = tk.OptionMenu(win, choice, *options)
+    option_menu = tk.OptionMenu(choiceWin, choice, *options)
     option_menu.grid(column=1, row=0, sticky=tk.W)
 
-    okBtn = tk.Button(win, bg=configJSON["posBtnColor"], text='OK', command=lambda: __answerMenu(win, options, choice.get()))
+    okBtn = tk.Button(choiceWin, bg=configJSON["posBtnColor"], text='OK', command=lambda: __answerMenu(choiceWin, options, choice.get()))
     okBtn.grid(column=0, row=1, sticky=tk.W)
-    
-    win.mainloop()
 
-    return options.index(choice.get())
+    choiceWin.mainloop()
+
+    q.put(options.index(choice.get()))

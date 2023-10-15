@@ -1,5 +1,5 @@
 #stuff
-TOTCFU = 120
+TOTCFU = [120, 180, 300]
 MAXNAMELEN = 51 #desired length + 1
 
 #gui

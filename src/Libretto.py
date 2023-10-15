@@ -117,7 +117,7 @@ def updateGUI():
     dim = int(textConsole.winfo_width()*4/(6*3.9))
     arr = gm.grades.toStats()
     plot_stats(graph1, "Andamento media", arr[0], arr[1], [18,31], dim)
-    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, const.TOTCFU+1], dim)
+    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, gm.grades.TOTCFU+1], dim)
 
 #refresh GUI when child has finished
 def pollChild():
