@@ -11,7 +11,7 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg)
 
 #custom modules
-import gradesModule as gm
+from gradesModule import Grades
 import networking as net
 import jsonHandler as jl
 import utils
@@ -21,6 +21,8 @@ configJSON,res = jl.loadJSON("config")
 if(res == False):
     sys.exit(1)
 
+gradesHandler = None
+
 #set theme for graphs
 plt.rcParams.update({"figure.facecolor" : configJSON["consoleBGcolor"],
                     "axes.facecolor" : configJSON["textBGcolor"],
@@ -29,13 +31,17 @@ plt.rcParams.update({"figure.facecolor" : configJSON["consoleBGcolor"],
                     "text.color" : "white",
                     "axes.edgecolor": "gray"})
 
-def print_grades(grades):
+def print_grades():
+    global gradesHandler
+
+    gradesHandler.loadFromFile()
+    grades_str = gradesHandler.toString()
 
     #output grades
     textConsole.config(state=tk.NORMAL)     #make console writable
     textConsole.delete('1.0', tk.END)   #flush old content
 
-    textConsole.insert(tk.END, grades)
+    textConsole.insert(tk.END, grades_str)
 	
     textConsole.pack(side=tk.TOP, fill=tk.X)
     textConsole.config(state=tk.DISABLED)   #make console read only
@@ -44,7 +50,7 @@ def print_grades(grades):
     textConsoleSummary.config(state=tk.NORMAL)     #make console writable
     textConsoleSummary.delete('1.0', tk.END)   #flush content
 
-    ret = gm.grades.avg()
+    ret = gradesHandler.avg()
     for i, elem in enumerate(ret):
         textConsoleSummary.insert(tk.END, const.phrase[i]+str(elem)+"\n")
 
@@ -102,10 +108,9 @@ def makeform(root, fields):
     return entries
 
 def updateGUI():
-    global window, textConsole, textConsoleSummary, graph1, graph2
+    global window, textConsole, textConsoleSummary, graph1, graph2, gradesHandler
     
-    gm.grades.loadFromFile()
-    print_grades(gm.grades.toString())
+    print_grades()
 
     #remove graphs to replace them
     if(len(graph1.winfo_children()) != 0):
@@ -115,9 +120,9 @@ def updateGUI():
 
     window.update()
     dim = int(textConsole.winfo_width()*4/(6*3.9))
-    arr = gm.grades.toStats()
-    plot_stats(graph1, "Andamento media", arr[0], arr[1], [17,31], dim)
-    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, gm.grades.TOTCFU+10], dim)
+    arr = gradesHandler.toStats()
+    plot_stats(graph1, "Andamento media", arr[0], arr[1], [17, gradesHandler.value30L + 1], dim)
+    plot_stats(graph2, "Andamento carriera (CFU)", arr[0], arr[2], [0, gradesHandler.TOTCFU + 10], dim)
 
 #refresh GUI when child has finished
 def pollChild():
@@ -133,8 +138,13 @@ def pollChild():
 
 #stores unipi user's data in a json to automate login
 def addUdata(array, win):
+    length = len(array)
+    # default values
+    thesis = 3
+    value30L = 30
 
-    if(array != []):
+    # UNIPI
+    if length == 4:
 
         contents = {'uname': array[0], 'pwd': array[1]}
         jl.saveJSON("userdata", contents)
@@ -146,46 +156,81 @@ def addUdata(array, win):
         except:
             utils.signalErrorWindow("Dati non validi")
             return
+        try:
+            thesis = int(array[2])
+            value30L = int(array[3])
+        except:
+            pass
+    
+    # MANUAL
+    elif length == 2:
+        try:
+            thesis = int(array[0])
+            value30L = int(array[1])
+        except:
+            pass
+
+    # DEFAULT
     else:
         if os.path.exists("./docs/userdata.json"):
             os.remove("./docs/userdata.json")
         if os.path.exists("./docs/session.json"):
             os.remove("./docs/session.json")
+        thesis = 3
+        value30L = 30
 
-    configJSON["init"] = "T"
+    configJSON["init"] = {"status": "T", "thesis": thesis, "30L": value30L}
     jl.saveJSON("config", configJSON)
     win.destroy()
+
+def switch(choice, win, panel):
+    # clear panel
+    for widget in panel.winfo_children():
+        widget.destroy()
+
+    # UNIPI
+    if choice == 0:
+        ents = makeform(panel, const.init_unipi)
+    # MANUAL
+    elif choice == 1:
+        ents = makeform(panel, const.init_man)
+
+    okBtn = tk.Button(panel, bg=configJSON["posBtnColor"], text='CONFIRM', command=(lambda e = ents: addUdata([utils.fetch("I", e)][0], win)))
+    okBtn.pack(side=tk.BOTTOM, padx=5, pady=(15,25))
+    win.update()
 
 #first time configuration
 def init():
     win = tk.Tk()
     win.title("")
-    win.geometry("200x200")
+    win.geometry("300x300")
     win.resizable(False, False)
     win.configure(bg=configJSON["panelBGcolor"])
     
     panel = tk.Frame(master=win, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     panel.pack(expand=True)
 
-    ents = makeform(panel, const.init)
+    #ents = makeform(panel, const.init)
     btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
-    okBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='UNIPI', command=(lambda e = ents: addUdata(utils.fetch("I", e), win)))
+    #[utils.fetch("I", e)]
+    okBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='UNIPI', command=(lambda: switch(0, win, panel)))
     okBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
-    manBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='MANUAL', command=(lambda e = ents: addUdata([], win)))
+    manBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='MANUAL', command=(lambda: switch(1, win, panel)))
     manBtn.pack(side=tk.LEFT, padx=5, pady=(15,25))
 
     win.mainloop()
 
-    if(configJSON["init"] != "T"):
+    if(configJSON["init"]["status"] != "T"):
         sys.exit(1)
 
 if __name__ == "__main__":
     mp.freeze_support()
 
     #check if already configured
-    if(configJSON["init"] != "T"):
+    if(configJSON["init"]["status"] != "T"):
         init()
+    gradesHandler = Grades(configJSON["init"]["thesis"], configJSON["init"]["30L"])
 
     unipi = jl.loadJSON("userdata")[1]
     #if user is UNIPI then load grades from db
@@ -213,12 +258,16 @@ if __name__ == "__main__":
     #setup console
     console = tk.PanedWindow(orient='vertical', master=container2)
     vertScrollbar = tk.Scrollbar(console, orient='vertical')
+    horizScrollbar = tk.Scrollbar(console, orient='horizontal')
     vertScrollbar.pack(side = tk.RIGHT, fill = tk.Y)
+    horizScrollbar.pack(side = tk.BOTTOM, fill = tk.X)
 
     textConsole = tk.Text(container2, height = 12, width = 75, wrap = tk.NONE,
-                        yscrollcommand = vertScrollbar.set, bg=configJSON["consoleBGcolor"],
-                        fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
+                        yscrollcommand = vertScrollbar.set, xscrollcommand=horizScrollbar.set,
+                        bg=configJSON["consoleBGcolor"], fg="white",
+                        state=tk.DISABLED, highlightthickness=0, borderwidth=0)
     vertScrollbar.config(command=textConsole.yview)
+    horizScrollbar.config(command=textConsole.xview)
     textConsoleSummary = tk.Text(container2, height = 3, width = 75, wrap = tk.NONE, bg=configJSON["textBGcolor"],
                         fg="white", state=tk.DISABLED, highlightthickness=0, borderwidth=0)
 
@@ -234,9 +283,9 @@ if __name__ == "__main__":
     ents = makeform(panel, const.fields)
     btnPanel = tk.Frame(master=panel, borderwidth=0, bg=configJSON["panelBGcolor"], highlightthickness=0)
     btnPanel.pack(anchor=tk.CENTER)
-    addBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gm.grades.addGrade(utils.fetch("A", e)), updateGUI()]))
+    addBtn = tk.Button(btnPanel, bg=configJSON["posBtnColor"], text='AGGIUNGI', command=(lambda e = ents: [gradesHandler.addGrade(utils.fetch("A", e)), updateGUI()]))
     addBtn.pack(side=tk.LEFT, padx=5, pady=20)
-    rmvBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gm.grades.removeGrade(utils.fetch("R", e)), updateGUI()]))
+    rmvBtn = tk.Button(btnPanel, bg=configJSON["negBtnColor"], text='RIMUOVI', command=(lambda e = ents: [gradesHandler.removeGrade(utils.fetch("R", e)), updateGUI()]))
     rmvBtn.pack(side=tk.RIGHT, padx=5, pady=20)
 
     #setup second graph

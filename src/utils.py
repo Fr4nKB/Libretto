@@ -15,10 +15,6 @@ def fetch(type, entries):
         
         tmp = entry[1].get()
 
-        if(index == 1 and type == "I"):
-            ret.append(tmp)
-            return ret
-
         ret.append(tmp)
         index += 1
 

@@ -6,14 +6,16 @@ import utils
 
 class Grades:
 
-    def __init__(this):
-        this.__grades = []
-        this.TOTCFU = const.TOTCFU[0]
+    def __init__(self, thesis_value: int = 3, value30L: int = 30):
+        self.__grades = []
+        self.__thesis = thesis_value
+        self.value30L = value30L
+        self.TOTCFU = const.TOTCFU[0]
 
-    def __checkInput(this, array):
+    def __checkInput(self, array):
         if(len(array) != 4):
             return False
-        
+
         name, gradeStr, cfuStr, date = array
         
         #check types
@@ -48,41 +50,41 @@ class Grades:
         
         return (timestamp, name, grade, cfu, date)
 
-    def addGrade(this, array):
+    def addGrade(self, array):
         
-        elem = this.__checkInput(array)
+        elem = self.__checkInput(array)
 
         #check for exact repetition
-        if(any(elem == s for s in this.__grades)):
+        if(any(elem == s for s in self.__grades)):
             return False
         
-        this.__grades.append(elem)
-        this.__grades.sort(key = lambda x: x[0], reverse=False)   #sort by date
+        self.__grades.append(elem)
+        self.__grades.sort(key = lambda x: x[0], reverse=False)   #sort by date
 
-        this.saveToFile()
+        self.saveToFile()
 
         return True
 
-    def removeGrade(this, array):
+    def removeGrade(self, array):
 
-        elem = this.__checkInput(array)
+        elem = self.__checkInput(array)
 
-        if(any(elem == s for s in this.__grades)):
-            this.__grades.remove(elem)
-            this.saveToFile()
+        if(any(elem == s for s in self.__grades)):
+            self.__grades.remove(elem)
+            self.saveToFile()
             return True
     
         return False
 
-    def avg(this):
+    def avg(self):
         avg = 0
         cfuSum = 0
 
-        for elem in this.__grades:
+        for elem in self.__grades:
             cfuSum += elem[3]
             
-            if(elem[2] == 33):     #30L = 33, counts as 30
-                tmp = 30
+            if(elem[2] == 33):
+                tmp = self.value30L
             else:
                 tmp = elem[2]
 
@@ -90,20 +92,21 @@ class Grades:
 
         for elem in const.TOTCFU:
             if(elem >= cfuSum):
-                this.TOTCFU = elem
+                self.TOTCFU = elem
                 break
 
-        mingrade = (avg + 18*(this.TOTCFU - cfuSum))/this.TOTCFU
-        maxgrade = (avg + 30*(this.TOTCFU - cfuSum))/this.TOTCFU
+        rem_cfu = self.TOTCFU - self.__thesis - cfuSum
+        mingrade = (avg + 18 * rem_cfu) / (self.TOTCFU - self.__thesis)
+        maxgrade = (avg + self.value30L * rem_cfu) / (self.TOTCFU - self.__thesis)
 
         if(cfuSum != 0):
             avg /= cfuSum
 
         return round(avg, 2), round(mingrade, 2), round(maxgrade, 2)
 
-    def loadFromFile(this):
+    def loadFromFile(self):
 
-        this.flush()
+        self.flush()
 
         try:
             with open("./docs/esami.txt", "r") as file:
@@ -117,46 +120,49 @@ class Grades:
                     return
                 else:
                     date = tokenizedStr[3][:len(tokenizedStr[3])-1]
-                    this.addGrade([tokenizedStr[0], tokenizedStr[1], tokenizedStr[2], date])
+                    try:
+                        self.addGrade([tokenizedStr[0], tokenizedStr[1], tokenizedStr[2], date])
+                    except:
+                        continue
 
         except:
-            this.__grades = []      
+            self.__grades = []    
 
-    def saveToFile(this):
+    def saveToFile(self):
 
         file = open("./docs/esami.txt", "w")
-        file.write(this.toString())
+        file.write(self.toString())
         file.close() 
 
-    def toString(this):
+    def toString(self):
         res = ""
-        for elem in this.__grades:
+        for elem in self.__grades:
             res += f"{elem[1]}, {elem[2]}, {elem[3]}, {elem[4]}\n"
         return res
     
-    def toStats(this):
+    def toStats(self):
 
         stats = [[], [], []]
 
         cfuSUM = 0
         avg = 0
-        for elem in this.__grades:
+        for elem in self.__grades:
             cfuSUM += elem[3]
 
             if(elem[2] == 33):
-                tmp = 30
+                tmp = self.value30L
             else:
                 tmp = elem[2]
                 
-            avg += tmp*elem[3]
+            avg += tmp * elem[3]
 
             stats[0].append(datetime.datetime.strptime(elem[4],'%d/%m/%Y').date())
-            stats[1].append(round(avg/cfuSUM, 2))
+            stats[1].append(round(avg / cfuSUM, 2))
             stats[2].append(cfuSUM)
 
         return stats
 
-    def flush(this):
-        this.__grades.clear()
+    def flush(self):
+        self.__grades.clear()
 
 grades = Grades()
