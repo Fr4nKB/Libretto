@@ -179,6 +179,11 @@ def addUdata(array, win):
         thesis = 3
         value30L = 30
 
+    if value30L not in range(30, 34):
+        value30L = 30
+    if thesis > 40:
+        thesis = 40
+
     configJSON["init"] = {"status": "T", "thesis": thesis, "30L": value30L}
     jl.saveJSON("config", configJSON)
     win.destroy()
